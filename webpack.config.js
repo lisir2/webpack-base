@@ -3,17 +3,16 @@ const glob = require('glob');
 // 设置模板
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 // 每次打包清楚打包的dist文件夹
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-// const optimizeCss = require('optimize-css-assets-webpack-plugin');
-const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin");
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');  //每次打包清理掉 之前打包内容
+const MiniCssExtractPlugin = require('mini-css-extract-plugin'); //抽离css 样式外部引入
+const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin"); //css压缩
 const UglifyJsPlugin = require("uglifyjs-webpack-plugin");//优化js如压缩
-
-
-const fs = require('fs');
+const fs = require('fs');  //fs 核心模块，用来读取文件 写入文件等
+const webpack = require('webpack');
 
 // 公共配置
 var common = {
+    // 封装读取文件的方法
     getDir: function (src) {
         var page = {};
         var file = fs.readdirSync(path.resolve(__dirname, src));
@@ -24,9 +23,14 @@ var common = {
         })
         return page;
     },
-    plugins:function () {
+    // 封装动态创建 HtmlWebpackPlugin 模板方法
+    plugins: function () {
         // plugins 默认文件
-        var PluginsArr = [new CleanWebpackPlugin(), new MiniCssExtractPlugin({ filename: "./css/[name].css" })];
+        var PluginsArr = [
+            new CleanWebpackPlugin(),
+            new MiniCssExtractPlugin({ filename: "./css/[name].css" }),  //抽离css样式
+            new webpack.HotModuleReplacementPlugin()  //使用webpack自带的，热更新插件。
+        ];
         var pageHtml = common.getDir('./public');
         for (var item in pageHtml) {
             var conf = {
@@ -46,7 +50,7 @@ module.exports = {
     entry: common.getDir('./src/js'),
     output: {
         filename: './js/[name].js',
-        path: path.resolve(__dirname, 'dist')
+        path: path.resolve(__dirname, 'dist')  //__dirname：当前路径全局变量
     },
     optimization: {//优化项
         minimizer: [
@@ -58,18 +62,19 @@ module.exports = {
             new OptimizeCSSAssetsPlugin()//优化css为压缩格式
         ]
     },
+    // 插件配置
     plugins: common.plugins(),
+    devServer: {
+        port: 3000,  //webpack-dev-server webpack服务
+        host: 'localhost', //服务器地址
+        open: false,  // 自动打开浏览器
+        contentBase: './dist',  //本地服务器所加载页面的页面的目录  默认打开index.html页面
+        hot: true  //热更新，修改代码后，不刷新整个页面
+    },
     module: {
         rules: [
             {
-                test: /\.css$/,
-                use: [
-                    MiniCssExtractPlugin.loader,
-                    'css-loader',
-                ]
-            },
-            {
-                test: /\.less$/,  //打包less 需要 安装 less 和 less-loader两个依赖
+                test: /\.(css||less)$/,
                 use: [
                     MiniCssExtractPlugin.loader,
                     'css-loader',
@@ -77,7 +82,7 @@ module.exports = {
                 ]
             },
             {
-                test: /\.(png|jpg|jpeg|gif)$/,    //处理图片打包
+                test: /\.(png|jpg|jpeg|gif)$/, //处理图片打包
                 loader: 'url-loader',
                 options: {
                     // 把较小的图片转换成base64的字符串内嵌在生成的js文件里
@@ -93,7 +98,7 @@ module.exports = {
                 test: /\.html$/,
                 use: [
                     {
-                        loader: 'html-loader',
+                        loader: 'html-loader',  //处理html页面img标签引入图片进行处理
                         options: {
                             minimize: true,
                             removeComments: false,
@@ -101,7 +106,7 @@ module.exports = {
                         }
                     }
                 ]
-            },
+            }
         ]
     }
 };
